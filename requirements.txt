@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+pandas
+firebase-admin
+azure-storage-blob
+requests
+python-dotenv
+azure-ai-inference

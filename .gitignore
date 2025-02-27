@@ -1,0 +1,7 @@
+.git/
+.vs/
+.env
+venv/
+__pycache__/
+.vscode/
+**/__pycache__/
