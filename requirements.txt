@@ -1,6 +1,3 @@
-fastapi
-uvicorn
-gunicorn
 pandas
 firebase-admin
 azure-storage-blob
