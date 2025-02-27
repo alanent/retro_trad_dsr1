@@ -48,7 +48,7 @@ def predict(br, max_tries=1000):
                     """),
                     UserMessage(content=br)
                 ],
-                max_tokens=800,
+                max_tokens=2048,
                 model='DeepSeek-R1-aakkp'
             )
 
@@ -64,9 +64,10 @@ def predict(br, max_tries=1000):
 
         except Exception as e:
             logger.error(f"Erreur lors de la traduction : {e}")
+            time.sleep(10)
 
         tries += 1
-        time.sleep(2)
+        
 
     return {"translation": 'api_error'}
 
