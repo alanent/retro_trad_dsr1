@@ -67,8 +67,7 @@ def predict(br, max_tries=1000):
             time.sleep(10)
 
         tries += 1
-        
-
+    
     return {"translation": 'api_error'}
 
 def main():
@@ -98,6 +97,12 @@ def main():
         # Traitement des traductions
         for index, row in df.iterrows():
             br_text = row['br']  # Colonne contenant le texte breton
+
+            # Vérifier si la phrase est déjà enregistrée dans Firestore
+            existing_docs = db.collection("to_validate").where("br", "==", br_text).stream()
+            if any(existing_docs):
+                logger.info(f"We have already this data: {br_text}")
+                continue
 
             # Traduction
             result = predict(br_text)
