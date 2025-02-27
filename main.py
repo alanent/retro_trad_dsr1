@@ -31,9 +31,10 @@ client = ChatCompletionsClient(
     credential=AzureKeyCredential(os.getenv("DSR1_KEY"))
 )
 
-def predict(br, max_tries=2):
+def predict(br, max_tries=10):
     """ Effectue la traduction du breton vers le français via Azure AI. """
     tries = 0
+    logger.info("trying request deepseekr1...")
     while tries < max_tries:
         try:
             response = client.complete(
@@ -48,7 +49,7 @@ def predict(br, max_tries=2):
                     UserMessage(content=br)
                 ],
                 max_tokens=2048,
-                model='DeepSeek-R1-soxol'
+                model='DeepSeek-R1-aakkp'
             )
 
             result = response.choices[0].message.content
@@ -65,7 +66,7 @@ def predict(br, max_tries=2):
             logger.error(f"Erreur lors de la traduction : {e}")
 
         tries += 1
-        time.sleep(2)
+        time.sleep(60)
 
     return {"translation": None}
 
