@@ -12,6 +12,8 @@ from azure.storage.blob import BlobServiceClient
 from azure.ai.inference import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.inference.models import SystemMessage, UserMessage
+from flask import Flask
+import threading
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -32,9 +34,9 @@ client = ChatCompletionsClient(
 )
 
 def predict(br, max_tries=1000):
-    """ Effectue la traduction du breton vers le français via Azure AI. """
+    """Effectue la traduction du breton vers le français via Azure AI."""
     tries = 0
-    logger.info("trying request deepseekr1...")
+    logger.info("Tentative de traduction via DeepSeek-R1...")
     while tries < max_tries:
         try:
             response = client.complete(
@@ -61,18 +63,15 @@ def predict(br, max_tries=1000):
                     return json_result
             except json.JSONDecodeError:
                 logger.error("Erreur de décodage JSON.")
-
         except Exception as e:
             logger.error(f"Erreur lors de la traduction : {e}")
             time.sleep(10)
-
         tries += 1
-    
-    return {"translation": 'api_error'}
+    return {"translation": "api_error"}
 
 def main():
     try:
-        logger.info("Démarrage du script...")
+        logger.info("Démarrage du traitement...")
 
         # Connexion à Azure Blob Storage
         blob_service_client = BlobServiceClient.from_connection_string(os.getenv("STORAGE_CONNECTION_STRING"))
@@ -101,12 +100,11 @@ def main():
             # Vérifier si la phrase est déjà enregistrée dans Firestore
             existing_docs = db.collection("to_validate").where("br", "==", br_text).stream()
             if any(existing_docs):
-                logger.info(f"We have already this data: {br_text}")
+                logger.info(f"Les données existent déjà : {br_text}")
                 continue
 
             # Traduction
             result = predict(br_text)
-
             if result.get("translation"):
                 fr_translation = result["translation"]
 
@@ -119,7 +117,7 @@ def main():
                         'source': "dsr1",
                         'timestamp': firestore.SERVER_TIMESTAMP
                     })
-                    logger.info(f"Traduction ajoutée: {fr_translation}")
+                    logger.info(f"Traduction ajoutée : {fr_translation}")
 
                     # Mise à jour du compteur dans Firestore
                     stats_ref = db.collection("stats").document("global")
@@ -130,9 +128,24 @@ def main():
                 logger.error(f"Aucune traduction valide pour l'entrée {index}.")
 
         logger.info("Traitement terminé.")
-
     except Exception as e:
         logger.error(f"Erreur lors de l'exécution du script : {e}")
 
+# Création de l'application Flask
+app = Flask(__name__)
+
+@app.route("/")
+def index():
+    return "Service en cours d'exécution", 200
+
+def start_background_task():
+    # Lancer le traitement dans un thread séparé
+    processing_thread = threading.Thread(target=main)
+    processing_thread.start()
+
 if __name__ == "__main__":
-    main()
+    # Démarrer la tâche de traitement en arrière-plan
+    start_background_task()
+    # Démarrer le serveur Flask sur le port défini ou 8000 par défaut
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host="0.0.0.0", port=port)

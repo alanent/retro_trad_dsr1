@@ -4,3 +4,6 @@ azure-storage-blob
 requests
 python-dotenv
 azure-ai-inference
+flask
+gunicorn
+uvicorn
