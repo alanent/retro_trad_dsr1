@@ -37,8 +37,7 @@ async def startup_event():
         while tries < max_tries:
             try:
                 response = client.complete(
-                    messages=[
-                        SystemMessage(content=""" 
+                    messages=[SystemMessage(content=""" 
                         You are an advanced machine translation system specializing in Breton-to-French translation.
                         Your task is to accurately translate Breton text into fluent and natural French while preserving the original meaning, nuances, and cultural context.
                         Ensure that the translations are grammatically correct and stylistically appropriate for the given text.
@@ -101,38 +100,43 @@ async def startup_event():
         blob_data = blob_client.download_blob().readall()
         df = pd.read_csv(io.BytesIO(blob_data))  # Utilisation de BytesIO pour convertir en fichier-like
         logger.info(df.head())
-        
-        # Traitement ligne par ligne du DataFrame
-        for index, row in df.iterrows():
-            br_text = row['br']  # Assurez-vous que la colonne 'br' existe dans votre CSV
 
-            # Appel à la fonction de prédiction pour traduire le texte
-            result = predict(br_text)
-            
-            if result.get("translation"):
-                fr_translation = result["translation"]
-                
-                # Enregistrement dans la collection 'to_validate'
-                try:
-                    to_validate_ref = db.collection("to_validate").document()
-                    to_validate_ref.set({
-                        'br': br_text,
-                        'fr': fr_translation,
-                        'source': "dsr1",
-                        'timestamp': firestore.SERVER_TIMESTAMP
-                    })
-                    logger.info(fr_translation)
+        # Lancer le traitement après la configuration
+        await process_data(df, db, predict)
 
-                    # Mise à jour du compteur dans la collection 'stats'
-                    stats_ref = db.collection("stats").document("global")
-                    stats_ref.update({
-                        'to_validate': firestore.Increment(1)  # Incrémente le compteur
-                    })
-                    logger.info(f"Traduction ajoutée à la collection 'to_validate' pour l'entrée {index}.")
-                except Exception as e:
-                    logger.error(f"Erreur lors de l'ajout des traductions dans Firestore : {e}")
-            else:
-                logger.error(f"Aucune traduction valide trouvée pour l'entrée {index}.")
     except Exception as e:
         logger.error(f"Erreur lors de l'initialisation de l'application : {e}")
 
+
+async def process_data(df, db, predict):
+    # Traitement ligne par ligne du DataFrame
+    for index, row in df.iterrows():
+        br_text = row['br']  # Assurez-vous que la colonne 'br' existe dans votre CSV
+
+        # Appel à la fonction de prédiction pour traduire le texte
+        result = predict(br_text)
+        
+        if result.get("translation"):
+            fr_translation = result["translation"]
+            
+            # Enregistrement dans la collection 'to_validate'
+            try:
+                to_validate_ref = db.collection("to_validate").document()
+                to_validate_ref.set({
+                    'br': br_text,
+                    'fr': fr_translation,
+                    'source': "dsr1",
+                    'timestamp': firestore.SERVER_TIMESTAMP
+                })
+                logger.info(fr_translation)
+
+                # Mise à jour du compteur dans la collection 'stats'
+                stats_ref = db.collection("stats").document("global")
+                stats_ref.update({
+                    'to_validate': firestore.Increment(1)  # Incrémente le compteur
+                })
+                logger.info(f"Traduction ajoutée à la collection 'to_validate' pour l'entrée {index}.")
+            except Exception as e:
+                logger.error(f"Erreur lors de l'ajout des traductions dans Firestore : {e}")
+        else:
+            logger.error(f"Aucune traduction valide trouvée pour l'entrée {index}.")
