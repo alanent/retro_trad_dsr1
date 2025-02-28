@@ -33,8 +33,8 @@ client = ChatCompletionsClient(
     credential=AzureKeyCredential(os.getenv("DSR1_KEY"))
 )
 
-def predict(br, max_tries=1000):
-    """Effectue la traduction du breton vers le français via Azure AI."""
+def predict(br, max_tries=3):
+    """Effectue la traduction du breton vers le français via Azure AI avec max 3 tentatives."""
     tries = 0
     logger.info("Tentative de traduction via DeepSeek-R1...")
     while tries < max_tries:
@@ -64,7 +64,7 @@ def predict(br, max_tries=1000):
             except json.JSONDecodeError:
                 logger.error("Erreur de décodage JSON.")
         except Exception as e:
-            logger.error(f"Erreur lors de la traduction : {e}")
+            logger.error(f"Erreur lors de la traduction (tentative {tries+1}/{max_tries}): {e}")
             time.sleep(10)
         tries += 1
     return {"translation": "api_error"}
@@ -105,7 +105,7 @@ def main():
 
             # Traduction
             result = predict(br_text)
-            if result.get("translation"):
+            if result.get("translation") and result.get("translation") != "api_error":
                 fr_translation = result["translation"]
 
                 # Enregistrement dans Firestore
@@ -125,7 +125,23 @@ def main():
                 except Exception as e:
                     logger.error(f"Erreur Firestore : {e}")
             else:
-                logger.error(f"Aucune traduction valide pour l'entrée {index}.")
+                logger.error(f"Échec de traduction pour l'entrée {index} après 3 tentatives.")
+                # Ajouter à la collection to_retry
+                try:
+                    to_retry_ref = db.collection("to_retry").document()
+                    to_retry_ref.set({
+                        'br': br_text,
+                        'attempts': 3,
+                        'last_error': "api_error" if result.get("translation") == "api_error" else "Traduction invalide",
+                        'timestamp': firestore.SERVER_TIMESTAMP
+                    })
+                    logger.info(f"Entrée ajoutée à to_retry : {br_text}")
+                    
+                    # Mise à jour du compteur to_retry dans Firestore (si nécessaire)
+                    stats_ref = db.collection("stats").document("global")
+                    stats_ref.update({'to_retry': firestore.Increment(1)})
+                except Exception as e:
+                    logger.error(f"Erreur lors de l'ajout à to_retry : {e}")
 
         logger.info("Traitement terminé.")
     except Exception as e:
