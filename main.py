@@ -90,7 +90,13 @@ def main():
         # Téléchargement du fichier CSV contenant les données à traduire
         blob_client = blob_service_client.get_blob_client(container="data", blob="br_mono.csv")
         blob_data = blob_client.download_blob().readall()
+       
         df = pd.read_csv(io.BytesIO(blob_data))  # Chargement du CSV dans un DataFrame
+        REVERSE= os.getenv("REVERSE")
+        if REVERSE:
+            df = df.iloc[::-1].reset_index(drop=True)
+        else:
+            pass
         logger.info(f"Données chargées : {df.head()}")
 
         # Traitement des traductions
