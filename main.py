@@ -51,7 +51,7 @@ def predict(br, max_tries=3):
                     UserMessage(content=br)
                 ],
                 max_tokens=2048,
-                model='DeepSeek-R1-aakkp'
+                model=os.getenv("DSR1_NAME")
             )
 
             result = response.choices[0].message.content
@@ -93,9 +93,15 @@ def main():
        
         df = pd.read_csv(io.BytesIO(blob_data))  # Chargement du CSV dans un DataFrame
         REVERSE= os.getenv("REVERSE")
+        SKIP= os.getenv("SKIP")
         if REVERSE:
             df = df.iloc[::-1].reset_index(drop=True)
         else:
+            pass
+
+        if SKIP:
+            df = df.iloc[250000:]
+        else: 
             pass
         logger.info(f"Données chargées : {df.head()}")
 
