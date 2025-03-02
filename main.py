@@ -94,12 +94,12 @@ def main():
         df = pd.read_csv(io.BytesIO(blob_data))  # Chargement du CSV dans un DataFrame
         REVERSE= os.getenv("REVERSE")
         SKIP= os.getenv("SKIP")
-        if REVERSE:
+        if REVERSE is True:
             df = df.iloc[::-1].reset_index(drop=True)
         else:
             pass
 
-        if SKIP:
+        if SKIP is True:
             df = df.iloc[250000:]
         else: 
             pass
